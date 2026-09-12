@@ -25,6 +25,8 @@ from agent.auth import AuthContext, can_cancel_order, permission_denied
 from agent.helpcenter import load_policy_docs
 from agent.killswitch import kill_switch
 
+from rapidfuzz import fuzz
+
 MAX_SEARCH_LIMIT = 25
 DEFAULT_ORDER_LIMIT = 20
 
@@ -53,7 +55,29 @@ def get_policy(ctx: AuthContext, policy_id: str) -> dict[str, Any]:
         agent.helpcenter.load_policy_docs() returns every parsed doc.
     """
     ### YOUR CODE HERE (HW1)
-    raise NotImplementedError("HW1: implement get_policy")
+
+    ## Step 1. Get all policies, Parse out specific policy ID
+    policies = load_policy_docs()
+
+    ## Step 2. Filter out specific policy
+    policy = next((x for x in policies if x.policy_id == policy_id), None)
+    
+    if policy:  
+        ## Step 3. If Policy exists, return policy based on success
+        return {
+            "ok": True,
+            "policy_id": policy.policy_id,
+            "title": policy.title,
+            "audience": policy.audience,
+            "body": policy.body
+        }
+    else:
+        ## Step 4. If Policy DNE, return error  
+        return {
+            "ok": False,
+            "error": "not_found",
+            "reason": f"Policy {policy_id} does not exist"
+        }
 
 
 def search_products(
@@ -96,7 +120,74 @@ def search_products(
         Use `with db.connection() as conn:` to close the database automatically.
     """
     ### YOUR CODE HERE (HW1)
-    raise NotImplementedError("HW1: implement search_products")
+
+    ## Step 0: Early fix for MAX_SEARCH_LIMIT range
+    if limit < 1:
+        limit = 1
+    elif limit > MAX_SEARCH_LIMIT:
+        limit = MAX_SEARCH_LIMIT
+
+    ## Step 1: Open connection with DB
+    with db.connection() as conn:    
+        ## Step 2: Exit if store filter given and NOT found
+        if store is not None:
+            store_item = db.get_store_by_name(conn, store)
+            if store_item is None:
+                return {
+                    "ok": False, 
+                    "error": "not_found", 
+                    "reason": f"Store {store} not found"
+                }
+
+        ## Step 3: Exit if query is empty
+        trimmed_query = str.strip(query)
+        if len(trimmed_query) == 0:
+            return {
+                "ok": False, 
+                "error": "invalid_argument",
+                "reason": "Query length must be greater than 0"
+            }
+        
+        ## Step 4: Exit if max_price <= 0
+        if max_price_usd is not None and max_price_usd <= 0:
+            return {
+                "ok": False, 
+                "error": "invalid_argument",
+                "reason": "Max Price must be greater than 0 when declared"
+            }
+
+        ## Step 5: Grab all Products that match whitespace cleaned query
+        products = db.list_products(conn, store_item.id if store is not None else None)
+
+        ## Step 6: Format returned products to match desired output
+        filtered_products = [next((x for x in products if query in x.title or query in x.description), None)]
+        print(filtered_products)
+
+        ## Step 7: Format products to match desired output
+        formatted_products = []
+        for product in filtered_products:
+            formatted_product = {
+                "product_id": product.id, 
+                "store_id": product.store_id, 
+                "title": product.title,
+                "price_usd": product.price_cents / 100
+            }
+
+            formatted_products.append(formatted_product)
+
+        ## Step 8: Sort products by price, then title, then add limit
+        formatted_products.sort(key=lambda x: x["price_usd"])
+        formatted_products.sort(key=lambda x: x["title"])
+
+        if limit: 
+            formatted_products = formatted_products[:limit]
+
+        ## Step 9: Add products to final returned object, return product
+        return {
+            "ok": True, 
+            "products": formatted_products, 
+            "count": len(formatted_products)
+        }
 
 
 def list_my_orders(ctx: AuthContext) -> dict[str, Any]:
@@ -122,7 +213,47 @@ def list_my_orders(ctx: AuthContext) -> dict[str, Any]:
         tool: the model cannot ask for someone else's orders through it.
     """
     ### YOUR CODE HERE (HW1)
-    raise NotImplementedError("HW1: implement list_my_orders")
+
+    ## Step 1: Determine user type from context
+    role = ctx.role
+
+    ## Step 2: Connect to DB
+    with db.connection() as conn:
+        ## Step 3: Determine logic for shopper
+        if role == 'shopper':
+            orders = db.list_orders_for_user(conn, ctx.user_id, DEFAULT_ORDER_LIMIT)
+            fmt_orders = []
+            for order in orders:
+                fmt_order = order.to_public_dict()
+                fmt_orders.append(fmt_order)
+
+            return {
+                "ok": True,
+                "orders": fmt_orders,
+                "count": len(fmt_orders)
+            }
+
+        ## Step 4: Use helper for merchant
+        elif role == 'merchant':
+            orders = db.list_orders_for_store(conn, ctx.store_id, DEFAULT_ORDER_LIMIT)
+            fmt_orders = []
+            for order in orders:
+                fmt_order = order.to_public_dict()
+                fmt_orders.append(fmt_order)
+
+            return {
+                "ok": True,
+                "orders": fmt_orders,
+                "count": len(fmt_orders)
+            }
+
+        ## Step 5: Return order for support        
+        else:
+            return {
+                "ok": False,
+                "error": "invalid_argument", 
+                "reason": "This user does not have access to view orders"
+            }
 
 
 def cancel_order(ctx: AuthContext, order_id: int, reason: str) -> dict[str, Any]:
@@ -168,7 +299,46 @@ def cancel_order(ctx: AuthContext, order_id: int, reason: str) -> dict[str, Any]
     if paused is not None:
         return {"ok": False, "error": "paused", "reason": paused}
     ### YOUR CODE HERE (HW1)
-    raise NotImplementedError("HW1: implement cancel_order")
+
+    ## Step 1: Check user role
+    role = ctx.role
+
+    ## Step 2: Start connection to DB
+    with db.connection() as conn:
+        ## Step 3: Get order
+        order = db.get_order(conn, order_id)
+
+        ## Step 4: Return error if order not found
+        if order is None:
+            return {
+                "ok": False, 
+                "error": "not_found",
+                "reason": f"Order {order_id} not found"
+            }
+
+        ## Step 5: Check that user has access to cancel order)
+        if not can_cancel_order(ctx, order.user_id, order.store_id):
+            ## Step 6: Return error on access denied
+            return permission_denied(f"Role {role} does not have access to cancel order {order_id}")
+
+        ## Step 7: Check that order is in allowed status
+        if order.status != 'placed':
+            ## Step 8: Return error if not allowed
+            return {
+                "ok": False, 
+                "error": "not_eligible", 
+                "reason": "Only orders with the status 'placed' can be cancelled"
+            }
+
+        ## Step 9: Update status of order
+        db.set_order_status(conn, order_id, 'cancelled')
+        
+    ## Step 10: Return confirmation of cancellation
+    return {
+        "ok": True, 
+        "order_id": order_id, 
+        "status": "cancelled"
+    }
 
 
 def find_order(ctx: AuthContext, query: str) -> dict[str, Any]:
@@ -203,4 +373,47 @@ def find_order(ctx: AuthContext, query: str) -> dict[str, Any]:
         match, return {"ok": True, "orders": []}.
     """
     ### YOUR CODE HERE (HW1)
-    raise NotImplementedError("HW1: implement find_order")
+    ## Step 1: Get the role
+    role = ctx.role
+    
+    ## Step 2: Open DB connection
+    with db.connection() as conn:
+        fmt_orders = []
+        if role == 'shopper':
+            ## Step 3a: Get list of orders (shopper)
+            orders = db.list_orders_for_user(conn, ctx.user_id, DEFAULT_ORDER_LIMIT)
+            for order in orders:
+                fmt_order = order.to_public_dict()
+                fmt_orders.append(fmt_order)
+        elif role == 'merchant':
+            ## Step 3b: Get list of orders (merchant)
+            orders = db.list_orders_for_store(conn, ctx.store_id, DEFAULT_ORDER_LIMIT)
+            for order in orders:
+                fmt_order = order.to_public_dict()
+                fmt_orders.append(fmt_order)
+        elif role == 'support':
+            ## Step 3c: Get list of orders (support)
+            orders = db.list_orders_for_user(conn, "*", DEFAULT_ORDER_LIMIT)
+            for order in orders:
+                fmt_order = order.to_public_dict()
+                fmt_orders.append(fmt_order)
+        else:
+            raise NotImplementedError("HW1: implement find_order")
+            
+        ## Step 4: Filter orders based on search
+        orders_with_product = []
+        all_products = db.list_products(conn, None)
+        for order in fmt_orders:
+            product = next((p for p in all_products if fuzz.ratio(p.title, query) > 90), None)
+
+            if product is not None and len(orders_with_product) < 5:
+                orders_with_product.append(order)
+                
+    
+        ## Step 5: Return order
+        print(orders_with_product)
+        return {
+            "ok": True, 
+            "orders": orders_with_product
+        }
+        
