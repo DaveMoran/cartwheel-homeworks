@@ -3,7 +3,10 @@
 ## Which tests fail as expected before the tools exist	
 All tests that require a connection to the DB failed due to the fact that we never specified how the agent can connect to gather data for the answer. When attempting to use these tools with the same lines of text we had from before the implementation, we recveived a lot of messages from the agent specifying that it could not access that information. Once we added the tools and the proper gateways, it allowed the agent to not only access the DB but verify that the user was only able to access their specific items.
 
+The tests that failed are all of the ones found in test_hw_holes.py
+
 ## Expectations written before each tool ran
+These were written after they were coded, but implications were made based on the function names. What was not assumed was the gate levels to protect from invalid access
 - `get_policy`: Used by our agent to retrieve a specific policy based on the policy id given.
 - `search_products`: Connects to the DB to look up products for either a customer or for a merchant, gated for the merchant by their specific store
 - `list_my_orders`: Connects to the DB to look up previous orders by a specific customer OR all orders made to a merchant's shop
