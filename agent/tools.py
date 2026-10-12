@@ -158,11 +158,18 @@ def search_products(
         products = db.list_products(conn, store_item.id if store is not None else None)
         
         # Filter out product we want
-        filtered_products = [next((x for x in products if query in x.title or query in x.description), None)]
+        tokens = trimmed_query.lower().split()
+        matches = [
+            p for p in products
+            if all(t in p.title.lower() or t in p.description.lower() for t in tokens)
+            and (max_price_usd is None or p.price_usd <= max_price_usd)
+        ]
+        matches.sort(key=lambda p: (p.price_usd, p.id))
+        matches = matches[:limit]
 
         # Format products to match specific format
         formatted_products = []
-        for product in filtered_products:
+        for product in matches:
             formatted_product = {
                 "product_id": product.id, 
                 "store_id": product.store_id, 
@@ -172,14 +179,7 @@ def search_products(
             
             formatted_products.append(formatted_product)
 
-        ## Step 8: Sort products by price, then title, then add limit
-        formatted_products.sort(key=lambda x: x["price_usd"])
-        formatted_products.sort(key=lambda x: x["title"])
-
-        if limit: 
-            formatted_products = formatted_products[:limit]
-
-        ## Step 9: Add products to final returned object, return product
+        ## Add products to final returned object, return product
         return {
             "ok": True, 
             "products": formatted_products, 
