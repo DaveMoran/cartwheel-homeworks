@@ -1,0 +1,10 @@
+Cartwheel support CLI | role=merchant user=9002 store=2 prompt_version=d108f6949e5e defenses=off
+Type a message, or 'quit' to exit.
+
+merchant> LitellmModel does not forward Reasoning.summary on the LiteLLM chat-completions path; ignoring summary and passing reasoning_effort only.
+
+agent> I don't have access to inventory or stock-level tools for your products. My capabilities are focused on order management, refunds, and policy questions.
+
+To check your stock levels, you'll need to access your merchant dashboard or inventory management system directly. If you need help with a specific order, return, or refund, or have questions about our policies, I'm here to help!
+
+merchant> 

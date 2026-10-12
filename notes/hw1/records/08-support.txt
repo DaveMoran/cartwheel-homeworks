@@ -1,0 +1,17 @@
+Cartwheel support CLI | role=support user=9501 store=None prompt_version=d108f6949e5e defenses=off
+Type a message, or 'quit' to exit.
+
+support> LitellmModel does not forward Reasoning.summary on the LiteLLM chat-completions path; ignoring summary and passing reasoning_effort only.
+LitellmModel does not forward Reasoning.summary on the LiteLLM chat-completions path; ignoring summary and passing reasoning_effort only.
+  [tool] get_order({'order_id': 7986})
+    -> {'ok': True, 'order': {'order_id': 7986, 'store_id': 2, 'product_id': 57, 'quantity': 1, 'total_usd': 290.75, 'status': 'delivered', 'ordered_at': '2026-06-27', 'shipped_at': '2026-06-28', 'delivered_at': '2026-06-30', 'refund_eligible': True, 'store_name': 'Juniper Home Goods'}}
+
+agent> Thanks for the order number. I can see that order 7986 shows as delivered on June 30th, but the customer says they never received it. Here's what I can do:
+
+1. **Issue a refund** — Since the order is marked as refund-eligible, I can process a refund for the full amount ($290.75) for a "not received" claim. This would go through our system.
+
+2. **Escalate for investigation** — If the customer wants to dispute the delivery status or investigate further, I can escalate this to a human agent who can look into the carrier tracking details and potentially authorize a replacement or refund.
+
+What would the customer prefer? Should I go ahead with the refund, or would they like us to investigate the delivery first?
+
+support> 
