@@ -216,11 +216,7 @@ def list_my_orders(ctx: AuthContext) -> dict[str, Any]:
     with db.connection() as conn:
         # Check if shopper or merchant
         if ctx.role not in ['shopper', 'merchant']:
-            return {
-                "ok": False,
-                "error": "invalid_argument",
-                "reason": "User role does not have the ability to have orders of their own"
-            }
+            return permission_denied(f"User role {ctx.role} is not authorized to list orders")
 
         # Get all orders
         if ctx.role == 'shopper':
