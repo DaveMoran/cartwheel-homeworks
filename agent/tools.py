@@ -24,6 +24,7 @@ from agent import db
 from agent.auth import AuthContext, can_cancel_order, permission_denied
 from agent.helpcenter import load_policy_docs
 from agent.killswitch import kill_switch
+from agent.db import list_orders_for_user, list_orders_for_store
 
 MAX_SEARCH_LIMIT = 25
 DEFAULT_ORDER_LIMIT = 20
@@ -210,7 +211,37 @@ def list_my_orders(ctx: AuthContext) -> dict[str, Any]:
         tool: the model cannot ask for someone else's orders through it.
     """
     ### YOUR CODE HERE (HW1)
-    raise NotImplementedError("HW1: implement list_my_orders")
+    # Connect to DB
+    with db.connection() as conn:
+        print(ctx.role)
+        # Check if shopper or merchant
+        if ctx.role not in ['shopper', 'merchant']:
+            return {
+                "ok": False,
+                "error": "invalid_argument",
+                "reason": "User role does not have the ability to have orders of their own"
+            }
+
+        # Get all orders
+        if ctx.role == 'shopper':
+            # If shopper, continue as normal
+            orders = list_orders_for_user(conn, ctx.user_id, DEFAULT_ORDER_LIMIT)
+        elif ctx.role == 'merchant':
+            # If merchant, add store ID
+            orders = list_orders_for_store(conn, ctx.store_id, DEFAULT_ORDER_LIMIT)
+        
+        # Format to public dict
+        formatted_orders = []
+        for order in orders:
+            formatted_order = order.to_public_dict()
+            formatted_orders.append(formatted_order)
+            
+        # Format orders to return
+        return {
+            "ok": True,
+            "orders": formatted_orders,
+            "count": len(formatted_orders)
+        }    
 
 
 def cancel_order(ctx: AuthContext, order_id: int, reason: str) -> dict[str, Any]:
