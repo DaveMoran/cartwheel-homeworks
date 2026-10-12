@@ -1,4 +1,3 @@
-warning: `VIRTUAL_ENV=/Users/moda/Sites/job-alert/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
 Cartwheel support CLI | role=merchant user=9002 store=2 prompt_version=d108f6949e5e defenses=off
 Type a message, or 'quit' to exit.
 
