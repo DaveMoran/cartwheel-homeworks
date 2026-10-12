@@ -213,7 +213,6 @@ def list_my_orders(ctx: AuthContext) -> dict[str, Any]:
     ### YOUR CODE HERE (HW1)
     # Connect to DB
     with db.connection() as conn:
-        print(ctx.role)
         # Check if shopper or merchant
         if ctx.role not in ['shopper', 'merchant']:
             return {
@@ -241,7 +240,7 @@ def list_my_orders(ctx: AuthContext) -> dict[str, Any]:
             "ok": True,
             "orders": formatted_orders,
             "count": len(formatted_orders)
-        }    
+        }
 
 
 def cancel_order(ctx: AuthContext, order_id: int, reason: str) -> dict[str, Any]:
@@ -287,7 +286,40 @@ def cancel_order(ctx: AuthContext, order_id: int, reason: str) -> dict[str, Any]
     if paused is not None:
         return {"ok": False, "error": "paused", "reason": paused}
     ### YOUR CODE HERE (HW1)
-    raise NotImplementedError("HW1: implement cancel_order")
+    # Connect to DB
+    with db.connection() as conn:
+        # Get order
+        order = db.get_order(conn, order_id)
+        
+        # If order DNE, return error
+        if order is None:
+            return {
+                "ok": False, 
+                "error": "not_found",
+                "reason": f"Order {order_id} not found"
+            }
+        
+        # Check order is eligible for cancellation
+        if order.status != 'placed':
+            return {
+                "ok": False, 
+                "error": "not_eligible", 
+                "reason": f"Order {order_id} is not eligible for cancellation"
+            }
+    
+        # Check if user can cancel order
+        if not can_cancel_order(ctx, order.user_id, order.store_id):
+            # If no, return error
+            return permission_denied(f"User role {ctx.role} is not authorized to cancel order {order_id}")
+        
+        # If all passes, update status
+        db.set_order_status(conn, order_id, "cancelled")
+        
+        return {
+            "ok": True, 
+            "order_id": order_id, 
+            "status": "cancelled"
+        }
 
 
 def find_order(ctx: AuthContext, query: str) -> dict[str, Any]:
