@@ -117,7 +117,74 @@ def search_products(
         Use `with db.connection() as conn:` to close the database automatically.
     """
     ### YOUR CODE HERE (HW1)
-    raise NotImplementedError("HW1: implement search_products")
+    # Start connection
+    with db.connection() as conn:
+        # Exit if store filter given and NOT found
+        if store is not None:
+            store_item = db.get_store_by_name(conn, store)
+            if store_item is None:
+                return {
+                    "ok": False, 
+                    "error": "not_found", 
+                    "reason": f"Store {store} not found"
+                }
+
+        # Exit if query is empty
+        trimmed_query = str.strip(query)
+        if len(trimmed_query) == 0:
+            return {
+                "ok": False, 
+                "error": "invalid_argument",
+                "reason": "Query length must be greater than 0"
+            }
+        
+        # Exit if max_price <= 0
+        if max_price_usd is not None and max_price_usd <= 0:
+            return {
+                "ok": False, 
+                "error": "invalid_argument",
+                "reason": "Max Price must be greater than 0 when declared"
+            }
+            
+        # Reset limit within params
+        if limit < 1:
+            limit = 1
+        elif limit > MAX_SEARCH_LIMIT:
+            limit = MAX_SEARCH_LIMIT
+            
+        # Get all products
+        products = db.list_products(conn, store_item.id if store is not None else None)
+        
+        # Filter out product we want
+        filtered_products = [next((x for x in products if query in x.title or query in x.description), None)]
+
+        # Format products to match specific format
+        formatted_products = []
+        for product in filtered_products:
+            formatted_product = {
+                "product_id": product.id, 
+                "store_id": product.store_id, 
+                "title": product.title,
+                "price_usd": product.price_usd
+            }
+            
+            formatted_products.append(formatted_product)
+
+        ## Step 8: Sort products by price, then title, then add limit
+        formatted_products.sort(key=lambda x: x["price_usd"])
+        formatted_products.sort(key=lambda x: x["title"])
+
+        if limit: 
+            formatted_products = formatted_products[:limit]
+
+        ## Step 9: Add products to final returned object, return product
+        return {
+            "ok": True, 
+            "products": formatted_products, 
+            "count": len(formatted_products)
+        }
+
+
 
 
 def list_my_orders(ctx: AuthContext) -> dict[str, Any]:
