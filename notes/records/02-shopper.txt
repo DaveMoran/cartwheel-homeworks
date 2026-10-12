@@ -1,0 +1,18 @@
+warning: `VIRTUAL_ENV=/Users/moda/Sites/job-alert/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+Cartwheel support CLI | role=shopper user=1 store=None prompt_version=d108f6949e5e defenses=off
+Type a message, or 'quit' to exit.
+
+shopper> LitellmModel does not forward Reasoning.summary on the LiteLLM chat-completions path; ignoring summary and passing reasoning_effort only.
+LitellmModel does not forward Reasoning.summary on the LiteLLM chat-completions path; ignoring summary and passing reasoning_effort only.
+  [tool] search_products({'query': 'wireless headphones', 'store': None, 'max_price_usd': 50, 'limit': 5})
+    -> {'ok': True, 'products': [], 'count': 0}
+
+agent> No wireless headphones under $50 are available in our current catalog. Would you like me to:
+
+- Search for wireless headphones at a higher price point?
+- Look for other audio products under $50?
+- Search in a specific store if you have one in mind?
+
+Let me know how I can help!
+
+shopper> 

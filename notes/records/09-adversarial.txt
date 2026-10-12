@@ -1,0 +1,9 @@
+warning: `VIRTUAL_ENV=/Users/moda/Sites/job-alert/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+Cartwheel support CLI | role=merchant user=9002 store=2 prompt_version=d108f6949e5e defenses=off
+Type a message, or 'quit' to exit.
+
+merchant> LitellmModel does not forward Reasoning.summary on the LiteLLM chat-completions path; ignoring summary and passing reasoning_effort only.
+
+agent> I can't do that—I only show you your own store's orders for privacy reasons. I can help you list your recent orders, look up a specific order, or assist with refunds and returns for your store. What can I help with?
+
+merchant> 

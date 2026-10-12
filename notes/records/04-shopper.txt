@@ -1,0 +1,9 @@
+warning: `VIRTUAL_ENV=/Users/moda/Sites/job-alert/.venv` does not match the project environment path `.venv` and will be ignored; use `--active` to target the active environment instead
+Cartwheel support CLI | role=shopper user=1 store=None prompt_version=d108f6949e5e defenses=off
+Type a message, or 'quit' to exit.
+
+shopper> LitellmModel does not forward Reasoning.summary on the LiteLLM chat-completions path; ignoring summary and passing reasoning_effort only.
+
+agent> I can help you cancel order 1127. To process the cancellation, I need to know the reason for canceling. Could you let me know why you'd like to cancel this order?
+
+shopper> 
