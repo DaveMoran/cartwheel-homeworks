@@ -24,7 +24,8 @@ from agent import db
 from agent.auth import AuthContext, can_cancel_order, permission_denied
 from agent.helpcenter import load_policy_docs
 from agent.killswitch import kill_switch
-from agent.db import list_orders_for_user, list_orders_for_store
+
+from rapidfuzz import fuzz
 
 MAX_SEARCH_LIMIT = 25
 DEFAULT_ORDER_LIMIT = 20
@@ -224,10 +225,10 @@ def list_my_orders(ctx: AuthContext) -> dict[str, Any]:
         # Get all orders
         if ctx.role == 'shopper':
             # If shopper, continue as normal
-            orders = list_orders_for_user(conn, ctx.user_id, DEFAULT_ORDER_LIMIT)
+            orders = db.list_orders_for_user(conn, ctx.user_id, DEFAULT_ORDER_LIMIT)
         elif ctx.role == 'merchant':
             # If merchant, add store ID
-            orders = list_orders_for_store(conn, ctx.store_id, DEFAULT_ORDER_LIMIT)
+            orders = db.list_orders_for_store(conn, ctx.store_id, DEFAULT_ORDER_LIMIT)
         
         # Format to public dict
         formatted_orders = []
@@ -354,4 +355,27 @@ def find_order(ctx: AuthContext, query: str) -> dict[str, Any]:
         match, return {"ok": True, "orders": []}.
     """
     ### YOUR CODE HERE (HW1)
-    raise NotImplementedError("HW1: implement find_order")
+    with db.connection() as conn:
+        # Derive scope from the authenticated context, never from the query
+        if ctx.role == 'shopper' and ctx.user_id is not None:
+            orders = db.list_order_search_candidates(conn, user_id=ctx.user_id)
+        elif ctx.role == 'merchant' and ctx.store_id is not None:
+            orders = db.list_order_search_candidates(conn, store_id=ctx.store_id)
+        elif ctx.role == 'support':
+            orders = db.list_order_search_candidates(conn, all_orders=True)
+        else:
+            return permission_denied("Role does not have access to search for orders")
+
+        titles = {p.id: p.title.lower() for p in db.list_products(conn, None)}
+        needle = query.strip().lower()
+
+        # Match each order against its own product's title, then limit to 5
+        matches = []
+        for order in orders:
+            title = titles.get(order.product_id)
+            if title and needle and fuzz.partial_ratio(needle, title) >= 90:
+                matches.append(order.to_public_dict())
+                if len(matches) == 5:
+                    break
+
+        return {"ok": True, "orders": matches}
