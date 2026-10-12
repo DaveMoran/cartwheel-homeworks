@@ -299,6 +299,11 @@ def cancel_order(ctx: AuthContext, order_id: int, reason: str) -> dict[str, Any]
                 "error": "not_found",
                 "reason": f"Order {order_id} not found"
             }
+    
+        # Check if user can cancel order
+        if not can_cancel_order(ctx, order.user_id, order.store_id):
+            # If no, return error
+            return permission_denied(f"User role {ctx.role} is not authorized to cancel order {order_id}")
         
         # Check order is eligible for cancellation
         if order.status != 'placed':
@@ -307,11 +312,6 @@ def cancel_order(ctx: AuthContext, order_id: int, reason: str) -> dict[str, Any]
                 "error": "not_eligible", 
                 "reason": f"Order {order_id} is not eligible for cancellation"
             }
-    
-        # Check if user can cancel order
-        if not can_cancel_order(ctx, order.user_id, order.store_id):
-            # If no, return error
-            return permission_denied(f"User role {ctx.role} is not authorized to cancel order {order_id}")
         
         # If all passes, update status
         db.set_order_status(conn, order_id, "cancelled")
